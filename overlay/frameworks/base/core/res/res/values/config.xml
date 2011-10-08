@@ -86,10 +86,10 @@
     -->
     <integer-array name="config_autoBrightnessButtonBacklightValues">
     	<item>255</item>
-    	<item>255</item>
-    	<item>255</item>
-    	<item>255</item>
-    	<item>0</item>
+    	<item>128</item>
+    	<item>64</item>
+    	<item>32</item>
+    	<item>16</item>
     	<item>0</item>
     	<item>0</item>
     	<item>0</item>
@@ -104,11 +104,11 @@
          Passion has no keyboard so all values are zero.
     -->
     <integer-array name="config_autoBrightnessKeyboardBacklightValues">
-    	<item>0</item>
-    	<item>0</item>
-    	<item>0</item>
-    	<item>0</item>
-    	<item>0</item>
+    	<item>255</item>
+    	<item>128</item>
+    	<item>64</item>
+    	<item>32</item>
+    	<item>16</item>
     	<item>0</item>
     	<item>0</item>
     	<item>0</item>
