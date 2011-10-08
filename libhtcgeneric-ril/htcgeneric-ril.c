@@ -48,11 +48,10 @@
 
 /* pathname returned from RIL_REQUEST_SETUP_DATA_CALL / RIL_REQUEST_SETUP_DEFAULT_PDP */
 #define PPP_TTY_PATH "ppp0"
+#define MAX_RETRY	15
 
 #define PPP_SYS_PATH "/sys/class/net/ppp0/operstate"
 
-#define PPP_SERVICE	"pppd_gprs"
-//#define PPP_KILL()	property_set("ctl.stop", PPP_SERVICE)
 #define PPP_KILL()	property_set("ril.cdma.data_ready", "false")
 
 #ifdef USE_TI_COMMANDS
@@ -2253,7 +2252,6 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 	char *user = NULL;
 	char *pass = NULL;
 	char *cmd;
-	//char *userpass;
 	int err;
 	ATResponse *p_response = NULL;
 	int fd, i;
@@ -2264,6 +2262,7 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 	char *buffer;
 	long buffSize, len;
 	char ipbuf[sizeof("255.255.255.255")];
+	char ipbuf2[sizeof("255.255.255.255")];
 	char *response[3] = { "1", PPP_TTY_PATH, ipbuf };
 	int mypppstatus;
 
@@ -2337,13 +2336,13 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 		at_response_free(p_response);
 	}
 
-	//asprintf(&userpass, PPP_SERVICE ":%s user %s password %s", smd7, user, pass);
+	LOGD("starting service pppd_gprs...");
 	property_set("net.gprs.local-ip", "0.0.0.0");
-	property_set("ril.cdma.data_ready", "true");
-	//property_set("ctl.start", userpass);
-	//free(userpass);
+	property_set("net.ppp0.local-ip", "0.0.0.0");
 
-	for (i=0; i<25; i++) {
+	property_set("ril.cdma.data_ready", "true");
+
+	for (i=0; i<MAX_RETRY; i++) {
 		int ok;
 		sleep(1); // allow time for ip-up to run
 		pthread_mutex_lock(&s_data_mutex);
@@ -2353,11 +2352,13 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 			goto error;
 		/* Return the IP address too */
 		property_get("net.gprs.local-ip", ipbuf, "0.0.0.0");
-		if (strcmp(ipbuf, "0.0.0.0"))
+		property_get("net.ppp0.local-ip", ipbuf2, "0.0.0.0");
+		if (strcmp(ipbuf, "0.0.0.0") || strcmp(ipbuf2, "0.0.0.0"))
 			break;
 	}
-	/* pppd started, but didn't get an IP address */
-	if (i == 25) {
+	/* pppd started, but didn't get an IP address. Script may not have executed */
+	if (i == MAX_RETRY) {
+		if (access(PPP_SYS_PATH, F_OK)) LOGD("PPPd came up with no IP");
 		PPP_KILL();
 		goto error;
 	}
@@ -2381,6 +2382,7 @@ error:
 	pthread_mutex_lock(&s_data_mutex);
 	data_state = Data_Off;
 	pthread_mutex_unlock(&s_data_mutex);
+	return; 
 }
 
 static int killConn(char *cid)
@@ -2389,7 +2391,7 @@ static int killConn(char *cid)
 	char * cmd;
 	int i = 0;
 	ATResponse *p_response = NULL;
-
+	LOGI("++killConn ppp_path %d data_state %d ++",access(PPP_SYS_PATH, F_OK), data_state);
 	if (access(PPP_SYS_PATH, F_OK) == 0) {
 		/* Did we already send a kill? */
 		pthread_mutex_lock(&s_data_mutex);
@@ -2431,6 +2433,7 @@ static int killConn(char *cid)
 	pthread_mutex_lock(&s_data_mutex);
 	data_state = Data_Off;
 	pthread_mutex_unlock(&s_data_mutex);
+	LOGI("--killConn ppp_path %d data_state %d --",access(PPP_SYS_PATH, F_OK), data_state);
 	return 0;
 
 error:
@@ -3561,7 +3564,6 @@ static int getESNMEID(int munge)
 		return -1;
 
 	line = p_response->p_intermediates->line;
-	LOGV("ESN/MEID: %s", line);
 	if (line[1] == 'x') {
 		/* Hex ESN: regular CDMA */
 		unsigned long int l;
