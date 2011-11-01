@@ -32,7 +32,7 @@
          specific properties of the device, perhaps by detecting the
          presence of a proximity sensor and/or hard SEND/END keys.  (If
          so, we wouldn't need this flag at all.) -->
-    <bool name="allow_in_call_touch_ui">false</bool>
+    <bool name="allow_in_call_touch_ui">true</bool>
 
     <!-- Flag indicating if the phone is a world phone -->
     <bool name="world_phone">true</bool>
