@@ -1,1 +1,1 @@
-/dev/msm_camera/*          0660   system       system
+/dev/ttyHS1               0600   bluetooth  bluetooth
