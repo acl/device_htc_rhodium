@@ -62,7 +62,14 @@ LightSensor::~LightSensor() {
 int LightSensor::setInitialState() {
     struct input_absinfo absinfo;
     if (!ioctl(data_fd, EVIOCGABS(EVENT_TYPE_LIGHT), &absinfo)) {
-        mPendingEvent.light = indexToValue(absinfo.value);
+        if (absinfo.value != -1) {
+        	mPendingEvent.light = indexToValue(absinfo.value);
+		} else {
+			// FIXME: When LS is first initialized on boot it reports a -1.
+			// We are defaulting to index 2.
+			LOGD("LightSensor setInitialState: setting default brightness");
+			mPendingEvent.light = indexToValue(2);
+		}
         mHasPendingEvent = true;
     }
     return 0;
@@ -120,7 +127,6 @@ int LightSensor::readEvents(sensors_event_t* data, int count)
             if (event->code == EVENT_TYPE_LIGHT) {
 	            LOGD("LightSensor: value received (%d)",event->value);
                 if (event->value != -1) {
-                    // FIXME: not sure why we're getting -1 sometimes
                     mPendingEvent.light = indexToValue(event->value);
                 }
             }
