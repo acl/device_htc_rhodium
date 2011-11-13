@@ -35,8 +35,7 @@
          config_hardware_automatic_brightness_available is not set, so we will use software implementation -->
     <bool name="config_automatic_brightness_available">true</bool>
 
-    <!-- disable menu hard key on Passion in non-pattern lockscreen.
-         Note not needed on Hero has it is a hardware key so no issue -->
+    <!-- disable menu hard key on Passion in non-pattern lockscreen -->
     <bool name="config_disableMenuKeyInLockScreen">true</bool>
 
     <!-- Array of light sensor LUX values to define our levels for auto backlight brightness support.
@@ -67,12 +66,12 @@
          than the size of the config_autoBrightnessLevels array.
     -->
     <integer-array name="config_autoBrightnessLcdBacklightValues">
-    	<item>8</item>
-    	<item>16</item>
-    	<item>34</item>
-    	<item>61</item>
-    	<item>96</item>
-    	<item>138</item>
+    	<item>40</item>
+    	<item>50</item>
+    	<item>65</item>
+    	<item>85</item>
+    	<item>100</item>
+    	<item>140</item>
     	<item>167</item>
     	<item>195</item>
     	<item>227</item>
