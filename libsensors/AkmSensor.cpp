@@ -130,7 +130,7 @@ int AkmSensor::enable(int32_t handle, int en)
 
 int AkmSensor::setDelay(int32_t handle, int64_t ns)
 {
-	LOGD("BMA: setDelay not being used!");
+	LOGD("BMA: setDelay not used! %lu", ns);
 //#ifdef ECS_IOCTL_APP_SET_DELAY
 #if 0
     int what = -1;
