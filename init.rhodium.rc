@@ -76,9 +76,7 @@ service hciattach /system/bin/brcm_patchram_plus --enable_hci --enable_lpm \
     group bluetooth net_bt_admin
     disabled
 
-service pppd_gprs /system/bin/pppd /dev/smd1 defaultroute local usepeerdns \
-    noipdefault unit 0 nodetach linkname gprs \
-    lcp-restart 1 lcp-max-configure 3 ipcp-restart 1 ipcp-max-configure 3
+service pppd_gprs /system/bin/pppd_runner
     disabled
     oneshot
 
@@ -87,8 +85,8 @@ service post-boot /system/bin/sysinit.sh
     group root
     oneshot
 
-on property:ril.cdma.data_ready=true
+on property:ril.pppd_runner.data_ready=true
     start pppd_gprs
 
-on property:ril.cdma.data_ready=false
+on property:ril.pppd_runner.data_ready=false
     stop pppd_gprs
