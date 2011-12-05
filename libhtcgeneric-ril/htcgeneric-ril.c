@@ -52,7 +52,7 @@
 
 #define PPP_SYS_PATH "/sys/class/net/ppp0/operstate"
 
-#define PPP_KILL()	property_set("ril.cdma.data_ready", "false")
+#define PPP_KILL()	property_set("ril.pppd_runner.data_ready", "false")
 
 #ifdef USE_TI_COMMANDS
 
@@ -2252,6 +2252,7 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 	char *user = NULL;
 	char *pass = NULL;
 	char *cmd;
+	char *pppd_args;
 	int err;
 	ATResponse *p_response = NULL;
 	int fd, i;
@@ -2321,6 +2322,7 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 			goto error;
 		}
 		at_response_free(p_response);
+		asprintf(&pppd_args,"%s user %s password %s", smd7, user, pass);
 	} else {
 		//CDMA
 		pthread_mutex_lock(&s_data_mutex);
@@ -2334,13 +2336,15 @@ static void requestSetupDataCall(char **data, size_t datalen, RIL_Token t)
 			goto error;
 		}
 		at_response_free(p_response);
+		asprintf(&pppd_args,"/dev/smd1 user %s password %s", user, pass);
 	}
 
 	LOGD("starting service pppd_gprs...");
 	property_set("net.gprs.local-ip", "0.0.0.0");
 	property_set("net.ppp0.local-ip", "0.0.0.0");
-
-	property_set("ril.cdma.data_ready", "true");
+	property_set("ril.pppd_runner.args", pppd_args);
+	property_set("ril.pppd_runner.data_ready", "true");
+	free(pppd_args);
 
 	for (i=0; i<MAX_RETRY; i++) {
 		int ok;
@@ -5150,9 +5154,13 @@ static void initializeCallback(void *param)
 		at_response_free(p_response);
 	}
 	/* make sure the radio is off */
-	if(phone_has & MODE_GSM)
+	if(phone_has & MODE_GSM) {
+        at_send_command("AT@BRIC=0", NULL);
+        sleep(1);
 		at_send_command("AT+CFUN=0", NULL);
-	else {
+        sleep(1);
+        at_send_command("AT+COPS=2", NULL);
+	} else {
 		/* Sending 'AT+CFUN=0' to a CDMA diam/raph eventually causes a "FATAL_ERROR: SM_TM (oncrpc_cb.c:00596)"
 		 * Send 'CFUN=66' first, if that errors then we know this is a world phone */
 		at_send_command("AT+CFUN=66", NULL);
