@@ -31,11 +31,13 @@
 #include <linux/android_pmem.h>
 #endif
 #include <linux/ioctl.h>
+#include "raw2jpeg.h"
 
 #define LIKELY(exp)   __builtin_expect(!!(exp), 1)
 #define UNLIKELY(exp) __builtin_expect(!!(exp), 0)
 
 extern "C" {
+#include "exifwriter.h"
 
 #include <fcntl.h>
 #include <time.h>
@@ -462,6 +464,7 @@ static bool native_get_maxzoom(int camfd, void *pZm);
 /* TAG JB 01/21/2010 : enhancement */
 static int camerafd;
 pthread_t w_thread;
+pthread_t jpegThread;
 /* End of TAG */
 
 /* TAG JB 01/20/2010 : Dual library support */
@@ -1231,39 +1234,66 @@ static bool native_stop_snapshot (int camfd)
     return true;
 }
 
+void *jpeg_encoder_thread( void *user )
+{
+    LOGD("jpeg_encoder_thread E");
+
+    sp<QualcommCameraHardware> obj = QualcommCameraHardware::getInstance();
+    if (obj != 0) {
+        obj->runJpegEncodeThread(user);
+    }
+    else LOGW("not starting frame thread: the object went away!");
+
+    LOGD("jpeg_encoder_thread X");
+
+    return NULL;
+}
+
+static bool mJpegThreadRunning = false;
 bool QualcommCameraHardware::native_jpeg_encode(void)
 {
     int jpeg_quality = mParameters.getInt("jpeg-quality");
     if (jpeg_quality >= 0) {
         LOGV("native_jpeg_encode, current jpeg main img quality =%d",
              jpeg_quality);
-        if(!LINK_jpeg_encoder_setMainImageQuality(jpeg_quality)) {
-            LOGE("native_jpeg_encode set jpeg-quality failed");
-            return false;
-        }
+//        if(!LINK_jpeg_encoder_setMainImageQuality(jpeg_quality)) {
+//           LOGE("native_jpeg_encode set jpeg-quality failed");
+//            return false;
+ //       }
     }
 
     int thumbnail_quality = mParameters.getInt("jpeg-thumbnail-quality");
     if (thumbnail_quality >= 0) {
         LOGV("native_jpeg_encode, current jpeg thumbnail quality =%d",
              thumbnail_quality);
-        if(!LINK_jpeg_encoder_setThumbnailQuality(thumbnail_quality)) {
-            LOGE("native_jpeg_encode set thumbnail-quality failed");
-            return false;
-        }
+//        if(!LINK_jpeg_encoder_setThumbnailQuality(thumbnail_quality)) {
+//            LOGE("native_jpeg_encode set thumbnail-quality failed");
+//            return false;
+//        }
     }
 
     int rotation = mParameters.getInt("rotation");
     if (rotation >= 0) {
         LOGV("native_jpeg_encode, rotation = %d", rotation);
-        if(!LINK_jpeg_encoder_setRotation(rotation)) {
-            LOGE("native_jpeg_encode set rotation failed");
-            return false;
-        }
+//        if(!LINK_jpeg_encoder_setRotation(rotation)) {
+//            LOGE("native_jpeg_encode set rotation failed");
+//            return false;
+//        }
     }
 
-    jpeg_set_location();
+    //jpeg_set_location();
 
+    mDimension.filler7 = 2560;
+    mDimension.filler8 = 1920;
+
+    int ret = !pthread_create(&jpegThread,
+                              NULL,
+                              jpeg_encoder_thread,
+                              NULL);
+    if (ret)
+        mJpegThreadRunning = true;
+
+#if 0
 /* TAG JB 01/20/2010 : Dual library support */
     uint8_t * thumbnailHeap = NULL;
     int thumbfd = 0;
@@ -1294,6 +1324,7 @@ bool QualcommCameraHardware::native_jpeg_encode(void)
         }
     }
 /* End of TAG */
+#endif
     return true;
 }
 
@@ -1334,6 +1365,82 @@ bool QualcommCameraHardware::native_set_parm(
         return false;
     }
     return true;
+}
+
+// **************************************************************************************************************************************************
+
+void QualcommCameraHardware::runJpegEncodeThread(void *data)
+{
+    unsigned char *buffer;
+
+    //Reset the Gps Information
+    exif_table_numEntries = 0;
+    LOGV("runJpegEncodeThread E");
+
+    int rotation = mParameters.getInt("rotation");
+    LOGD("native_jpeg_encode, rotation = %d", rotation);
+
+    bool encode_location = true;
+    camera_position_type pt;
+
+    #define PARSE_LOCATION(what,type,fmt,desc) do {                 \
+            pt.what = 0;                                            \
+            const char *what##_str = mParameters.get("gps-"#what);  \
+            LOGV("GPS PARM %s --> [%s]", "gps-"#what, what##_str);  \
+            if (what##_str) {                                       \
+                    type what = 0;                                  \
+                    if (sscanf(what##_str, fmt, &what) == 1)        \
+                            pt.what = what;                         \
+                    else {                                          \
+                            LOGE("GPS " #what " %s could not"       \
+                            " be parsed as a " #desc, what##_str);  \
+                            encode_location = false;                \
+                    }                                               \
+            }                                                       \
+            else {                                                  \
+                    LOGD("GPS " #what " not specified: "            \
+                    "defaulting to zero in EXIF header.");          \
+                    encode_location = false;                        \
+            }                                                       \
+    } while(0)
+
+    PARSE_LOCATION(timestamp, long, "%ld", "long");
+    if (!pt.timestamp) pt.timestamp = time(NULL);
+    PARSE_LOCATION(altitude, short, "%hd", "short");
+    PARSE_LOCATION(latitude, double, "%lf", "double float");
+    PARSE_LOCATION(longitude, double, "%lf", "double float");
+
+    #undef PARSE_LOCATION
+
+    if (encode_location) {
+        LOGD("setting image location ALT %d LAT %lf LON %lf",
+             pt.altitude, pt.latitude, pt.longitude);
+    }
+    else {
+        LOGV("FAIL LOCATE PICTURE: not setting image location");
+    }
+
+    camera_position_type *npt = &pt;
+    if(!encode_location) {
+        npt = NULL;
+    }
+
+    int jpeg_quality = mParameters.getInt("jpeg-quality");
+
+    // Receive and convert to jpeg internaly, without using privative app
+    if (yuv420_save2jpeg((unsigned char*) mJpegHeap->mHeap->base(),
+        mRawHeap->mHeap->base(), mRawWidth, mRawHeight, jpeg_quality, &mJpegSize))
+        LOGV("jpegConvert done! ExifWriter...");
+    else
+        LOGE("jpegConvert failed!");
+
+    writeExif(mJpegHeap->mHeap->base(), mJpegHeap->mHeap->base(), mJpegSize,
+            &mJpegSize, rotation, npt);
+
+    receiveJpegPicture();
+
+    mJpegThreadRunning = false;
+    LOGV("runJpegEncodeThread X");
 }
 
 void QualcommCameraHardware::jpeg_set_location()
@@ -1744,6 +1851,16 @@ void QualcommCameraHardware::release()
              mCameraControlFd, strerror(errno));
 
     LINK_release_cam_conf_thread();
+
+    if (mJpegThreadRunning) {
+        LOGV("Stopping the jpeg thread");
+        rc = pthread_join(jpegThread, NULL);
+        if (rc)
+            LOGE("jpeg_thread exit failure: %s", strerror(errno));
+    }
+
+    memset(&mDimension, 0, sizeof(mDimension));
+
     close(mCameraControlFd);
     mCameraControlFd = -1;
 #if DLOPEN_LIBMMCAMERA

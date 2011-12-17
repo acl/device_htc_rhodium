@@ -156,7 +156,7 @@ typedef enum
 	LED_MODE_ON,
 	LED_MODE_AUTO,
 } flash_led_type;
-
+#if 0
 typedef struct
 {
     uint32_t timestamp;  /* seconds since 1/6/1980          */
@@ -164,7 +164,7 @@ typedef struct
     double   longitude;  /* degrees                */
     int16_t  altitude;   /* meters                          */
 } camera_position_type;
-
+#endif
 typedef struct
 {
     unsigned int in1_h;
@@ -413,6 +413,9 @@ private:
     void deinitPreview();
     bool initRaw(bool initJpegHeap);
     void deinitRaw();
+
+    friend void *jpeg_encoder_thread( void *user );
+    void runJpegEncodeThread(void *data);
 
     bool mFrameThreadRunning;
     Mutex mFrameThreadWaitLock;
