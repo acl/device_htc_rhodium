@@ -5565,17 +5565,20 @@ const RIL_RadioFunctions *RIL_Init(const struct RIL_Env *env, int argc, char **a
 	char buffer[32];
 
 	s_rilenv = env;
+	memset(buffer,0,sizeof(buffer));
+	fd=open("/sys/class/htc_hw/machine_variant", O_RDONLY);
+	read(fd, buffer, 8);
+	LOGI("RIL_Init found %s", buffer);
 
-	fd=open("/sys/class/htc_hw/radio", O_RDONLY);
-	read(fd, buffer, 32);
-	if(strncmp(buffer, "GSM",3)==0) {
-		phone_has = MODE_GSM;
-		phone_is = MODE_GSM;
-		LOGI("RIL_Init found GSM hardware");
-	} else {
-		phone_has = MODE_CDMA;
-		phone_is = MODE_CDMA;
-		LOGI("RIL_Init found CDMA hardware");
+	switch (buffer[4]) {
+		case '4':
+		case '5':
+			phone_has = MODE_GSM;
+			phone_is = MODE_CDMA;
+			break;
+		default:
+			phone_has = MODE_GSM;
+			phone_is = MODE_GSM;
 	}
 
 	/* If /dev/smd7 exists, use it for data, otherwise defaults to smd1 */
