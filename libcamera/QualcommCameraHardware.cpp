@@ -1254,31 +1254,19 @@ bool QualcommCameraHardware::native_jpeg_encode(void)
 {
     int jpeg_quality = mParameters.getInt("jpeg-quality");
     if (jpeg_quality >= 0) {
-        LOGV("native_jpeg_encode, current jpeg main img quality =%d",
+        LOGV("native_jpeg_encode, current jpeg main img quality = %d",
              jpeg_quality);
-//        if(!LINK_jpeg_encoder_setMainImageQuality(jpeg_quality)) {
-//           LOGE("native_jpeg_encode set jpeg-quality failed");
-//            return false;
- //       }
     }
 
     int thumbnail_quality = mParameters.getInt("jpeg-thumbnail-quality");
     if (thumbnail_quality >= 0) {
-        LOGV("native_jpeg_encode, current jpeg thumbnail quality =%d",
+        LOGV("native_jpeg_encode, current jpeg thumbnail quality = %d",
              thumbnail_quality);
-//        if(!LINK_jpeg_encoder_setThumbnailQuality(thumbnail_quality)) {
-//            LOGE("native_jpeg_encode set thumbnail-quality failed");
-//            return false;
-//        }
     }
 
     int rotation = mParameters.getInt("rotation");
     if (rotation >= 0) {
         LOGV("native_jpeg_encode, rotation = %d", rotation);
-//        if(!LINK_jpeg_encoder_setRotation(rotation)) {
-//            LOGE("native_jpeg_encode set rotation failed");
-//            return false;
-//        }
     }
 
     //jpeg_set_location();
@@ -1293,38 +1281,6 @@ bool QualcommCameraHardware::native_jpeg_encode(void)
     if (ret)
         mJpegThreadRunning = true;
 
-#if 0
-/* TAG JB 01/20/2010 : Dual library support */
-    uint8_t * thumbnailHeap = NULL;
-    int thumbfd = 0;
-    
-    if ( liboemcamera_version == BASIC_LIB ) {
-        cam_ctrl_dimension_t_basic mDimensionBasic;
-        cam_ctrl_dimension_convert(mDimension, mDimensionBasic);
-        if (!LINK_jpeg_encoder_encode_basic(&mDimensionBasic,
-                                      thumbnailHeap,
-                                      thumbfd,
-                                      (uint8_t *)mRawHeap->mHeap->base(),
-                                      mRawHeap->mHeap->getHeapID(),
-                                      &mCrop, exif_data, exif_table_numEntries,
-                                      jpegPadding/2)) {
-            LOGE("native_jpeg_encode: jpeg_encoder_encode failed.");
-            return false;
-        }    
-    } else {
-        if (!LINK_jpeg_encoder_encode(&mDimension,
-                                      thumbnailHeap,
-                                      thumbfd,
-                                      (uint8_t *)mRawHeap->mHeap->base(),
-                                      mRawHeap->mHeap->getHeapID(),
-                                      &mCrop, exif_data, exif_table_numEntries,
-                                      jpegPadding/2)) {
-            LOGE("native_jpeg_encode: jpeg_encoder_encode failed.");
-            return false;
-        }
-    }
-/* End of TAG */
-#endif
     return true;
 }
 
@@ -1747,8 +1703,6 @@ bool QualcommCameraHardware::initRaw(bool initJpegHeap)
 
     LOGV("do_mmap snapshot pbuf = %p, pmem_fd = %d",
          (uint8_t *)mRawHeap->mHeap->base(), mRawHeap->mHeap->getHeapID());
-
-    // Jpeg
 
     if (initJpegHeap) {
         LOGV("initRaw: initializing mJpegHeap.");
