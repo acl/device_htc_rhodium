@@ -228,6 +228,7 @@ static void handle_cdma_ccwa (const char *s)
 		goto out;
 	resp.numberPresentation = strcspn(resp.number, "+0123456789") != 0;
 	resp.name = NULL;
+	/* TODO: missing parameters not being filled */
 	RIL_onUnsolicitedResponse ( RIL_UNSOL_CDMA_CALL_WAITING,
 			&resp, sizeof(resp));
 out:
@@ -5368,6 +5369,7 @@ static void onUnsolicited (const char *s, const char *sms_pdu)
 		}
 		if (s[0] == '2' || strStartsWith(s, "+CRING:")) {
 			RIL_onUnsolicitedResponse(
+			/* TODO: documentation request we send RIL_CDMA_SignalInfoRecord for CDMA */
 				RIL_UNSOL_CALL_RING, NULL, 0);
 		}
 		err = 0;
