@@ -745,7 +745,7 @@ status_t AudioHardware::doAcousticAudioDeviceChange(struct msm_snd_device_config
      * On some device, it can cause power collapse if speaker is not powered off
      * (i.e : on diamond)
      */
-    if ( mCurSndDevice != SND_DEVICE_IDLE ) {
+    if (( mCurSndDevice != SND_DEVICE_IDLE ) && (mCurSndDevice == SND_DEVICE_SPEAKER)) {
         if (in_call) {
 			LOGI("disabling volume method=VOICE");
 			set_volume_rpc(SND_DEVICE_CURRENT, SND_METHOD_VOICE, 0);
@@ -802,7 +802,7 @@ status_t AudioHardware::doAcousticAudioDeviceChange(struct msm_snd_device_config
         /* XXX: Can't be used. @ boot time, isStreamActive blocks media service.
         bool bMusic;
         AudioSystem::isStreamActive(AudioSystem::MUSIC, &bMusic);*/
-        if (in_call || (bCurrentOutStream != AudioSystem::DEFAULT)) {
+        if ((mMode == AudioSystem::MODE_RINGTONE) || in_call || (bCurrentOutStream != AudioSystem::DEFAULT)) {
             bEnableOut = true;    
         }
         /* If recording while speaker is in use, then enable dual mic */
